@@ -30,6 +30,7 @@ export interface LeadEventoInsert {
   tipo_menu?: string;
   contacto_pref: ContactoPref;
   notas?: string;
+  conversacion?: { role: 'user' | 'assistant'; content: string }[];
   restaurant_id: string;
 }
 

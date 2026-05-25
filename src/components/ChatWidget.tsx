@@ -173,6 +173,9 @@ export default function ChatWidget() {
           timestamp: new Date(),
         }]);
       } else if (parsed.tipo === 'evento') {
+        const conversacion = messages
+          .filter(m => m.id !== 'welcome')
+          .map(m => ({ role: m.role, content: m.content }));
         const lead: LeadEventoInsert = {
           nombre:       parsed.nombre as string,
           telefono:     parsed.telefono as string,
@@ -183,6 +186,7 @@ export default function ChatWidget() {
           tipo_menu:    parsed.tipo_menu as string | undefined,
           contacto_pref: parsed.contacto_pref as ContactoPref,
           notas:        parsed.notas as string | undefined,
+          conversacion,
           restaurant_id: RESTAURANT_ID,
         };
         await insertLeadEvento(lead);
