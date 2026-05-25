@@ -52,7 +52,11 @@ export default function ChatWidget() {
 
   // Ciclo de bocadillos: cada 5s cambia, para a los 30s
   useEffect(() => {
-    const stop = setTimeout(() => setBubblesActive(false), 30000);
+    const stop = setTimeout(() => {
+      setBubblesActive(false);
+      if (window.self !== window.top)
+        window.parent.postMessage({ type: 'chatbot-bubble', active: false }, '*');
+    }, 30000);
     const cycle = setInterval(() => {
       setBubbleVisible(false);
       setTimeout(() => {
@@ -60,6 +64,8 @@ export default function ChatWidget() {
         setBubbleVisible(true);
       }, 400);
     }, 5000);
+    if (window.self !== window.top)
+      window.parent.postMessage({ type: 'chatbot-bubble', active: true }, '*');
     return () => { clearTimeout(stop); clearInterval(cycle); };
   }, []);
 
