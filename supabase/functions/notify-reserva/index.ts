@@ -42,127 +42,168 @@ function formatFecha(iso: string): string {
   return `${d} de ${meses[parseInt(m) - 1]} de ${y}`;
 }
 
-// ─── Plantilla: Reserva Confirmada ────────────────────────────────────────────
-function emailConfirmada(r: ReservaRecord): { subject: string; html: string } {
-  const ocasion = r.detalles?.ocasion
-    ? `<p style="margin:0 0 8px;">🎉 <strong>Ocasión especial:</strong> ${escapeHtml(r.detalles.ocasion)}</p>`
-    : '';
-  const alergias = r.detalles?.alergias
-    ? `<p style="margin:0 0 8px;">🌿 <strong>Alergias/dieta:</strong> ${escapeHtml(r.detalles.alergias)}</p>`
-    : '';
-  const tronas = r.detalles?.tronas
-    ? `<p style="margin:0 0 8px;">🪑 <strong>Tronas:</strong> Sí, las prepararemos</p>`
-    : '';
+const LOGO_URL = 'https://chatbot-rincon.vercel.app/logo.png';
 
-  return {
-    subject: `✅ Reserva confirmada — ${formatFecha(r.fecha)}`,
-    html: `
+const EMAIL_BASE = `
 <!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f8f8f5;font-family:'Helvetica Neue',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+</head>
+<body style="margin:0;padding:0;background:#f0ede6;font-family:Georgia,'Times New Roman',serif;">
+`;
+
+const EMAIL_HEADER = `
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 16px 0;">
     <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
-
-        <!-- Header -->
+      <table width="580" cellpadding="0" cellspacing="0" style="max-width:580px;width:100%;">
         <tr>
-          <td style="background:#f2cc0d;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
-            <p style="margin:0 0 8px;font-size:32px;">🍽️</p>
-            <h1 style="margin:0;font-size:22px;font-weight:700;color:#1a180d;">Rincón de Alfonso</h1>
-            <p style="margin:6px 0 0;font-size:14px;color:#4a4010;">Reservas y Eventos</p>
+          <td style="background:#1a1208;border-radius:12px 12px 0 0;padding:36px 48px;text-align:center;">
+            <img src="${LOGO_URL}" alt="Rincón de Alfonso" width="200" style="max-width:200px;height:auto;display:block;margin:0 auto;" />
           </td>
         </tr>
-
-        <!-- Body -->
         <tr>
-          <td style="background:#ffffff;padding:36px 40px;">
-            <h2 style="margin:0 0 8px;font-size:20px;color:#1a180d;">¡Reserva confirmada! ✅</h2>
-            <p style="margin:0 0 24px;font-size:15px;color:#64748b;">Hola ${escapeHtml(r.nombre)}, tu reserva ha sido confirmada. Te esperamos con todo listo.</p>
+          <td style="background:#c9a24a;height:3px;"></td>
+        </tr>
+`;
 
-            <!-- Caja de detalles -->
-            <div style="background:#f8f8f5;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
-              <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;">Detalles de tu reserva</p>
-              <p style="margin:0 0 8px;font-size:15px;color:#1e293b;">📅 <strong>${formatFecha(r.fecha)}</strong> a las <strong>${r.hora}</strong></p>
-              <p style="margin:0 0 8px;font-size:15px;color:#1e293b;">👥 <strong>${r.comensales} ${r.comensales === 1 ? 'persona' : 'personas'}</strong></p>
-              ${ocasion}${alergias}${tronas}
-            </div>
-
-            <p style="margin:0 0 8px;font-size:14px;color:#64748b;">¿Necesitas modificar o cancelar? Llámanos con antelación:</p>
-            <p style="margin:0 0 24px;font-size:15px;font-weight:600;color:#1a180d;">📞 659 254 121</p>
-
-            <p style="margin:0;font-size:14px;color:#94a3b8;">¡Hasta pronto! 👋</p>
+const EMAIL_FOOTER = `
+        <tr>
+          <td style="background:#c9a24a;height:1px;"></td>
+        </tr>
+        <tr>
+          <td style="background:#1a1208;border-radius:0 0 12px 12px;padding:24px 48px;text-align:center;">
+            <p style="margin:0 0 6px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#c9a24a;letter-spacing:0.12em;text-transform:uppercase;">Rincón de Alfonso</p>
+            <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#7a6a4a;">Carril Torre Los Leales, 4 · Los Dolores, Murcia</p>
           </td>
         </tr>
-
-        <!-- Footer -->
+      </table>
+    </td></tr>
+  </table>
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:0 16px 48px;">
+    <tr><td align="center">
+      <table width="580" cellpadding="0" cellspacing="0" style="max-width:580px;width:100%;">
         <tr>
-          <td style="background:#f8f8f5;border-radius:0 0 16px 16px;padding:20px 40px;text-align:center;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">Rincón de Alfonso · Carril Torre Los Leales, 4 · Los Dolores, Murcia</p>
+          <td style="padding:12px 0;text-align:center;">
+            <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#a09070;">Este correo ha sido enviado automáticamente. Por favor no respondas a este mensaje.</p>
           </td>
         </tr>
-
       </table>
     </td></tr>
   </table>
 </body>
-</html>`,
+</html>
+`;
+
+// ─── Plantilla: Reserva Confirmada ────────────────────────────────────────────
+function emailConfirmada(r: ReservaRecord): { subject: string; html: string } {
+  const ocasion = r.detalles?.ocasion
+    ? `<tr><td style="padding:12px 0;border-bottom:1px solid #f0ede6;">
+         <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#c9a24a;letter-spacing:0.1em;text-transform:uppercase;">Ocasión especial</p>
+         <p style="margin:4px 0 0;font-size:15px;color:#1a1208;">${escapeHtml(r.detalles.ocasion)}</p>
+       </td></tr>`
+    : '';
+  const alergias = r.detalles?.alergias
+    ? `<tr><td style="padding:12px 0;border-bottom:1px solid #f0ede6;">
+         <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#c9a24a;letter-spacing:0.1em;text-transform:uppercase;">Alergias / Dieta</p>
+         <p style="margin:4px 0 0;font-size:15px;color:#1a1208;">${escapeHtml(r.detalles.alergias)}</p>
+       </td></tr>`
+    : '';
+  const tronas = r.detalles?.tronas
+    ? `<tr><td style="padding:12px 0;">
+         <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#c9a24a;letter-spacing:0.1em;text-transform:uppercase;">Tronas</p>
+         <p style="margin:4px 0 0;font-size:15px;color:#1a1208;">Sí, las tendremos listas</p>
+       </td></tr>`
+    : '';
+
+  return {
+    subject: `Reserva confirmada · ${formatFecha(r.fecha)} · Rincón de Alfonso`,
+    html: `${EMAIL_BASE}${EMAIL_HEADER}
+        <tr>
+          <td style="background:#ffffff;padding:48px 48px 40px;">
+
+            <p style="margin:0 0 4px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#c9a24a;letter-spacing:0.12em;text-transform:uppercase;">Confirmación de reserva</p>
+            <h1 style="margin:0 0 24px;font-size:28px;font-weight:400;color:#1a1208;line-height:1.2;">Su mesa está<br><em>reservada</em></h1>
+
+            <p style="margin:0 0 32px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;color:#5a4e3a;line-height:1.7;">Estimado/a <strong>${escapeHtml(r.nombre)}</strong>, es un placer confirmarle su reserva. Le esperamos con todo preparado para ofrecerle una experiencia inolvidable.</p>
+
+            <!-- Detalles -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e8e0d0;border-radius:8px;margin-bottom:32px;">
+              <tr>
+                <td style="padding:20px 24px;border-bottom:1px solid #e8e0d0;">
+                  <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#c9a24a;letter-spacing:0.12em;text-transform:uppercase;">Fecha y hora</p>
+                  <p style="margin:6px 0 0;font-size:18px;color:#1a1208;font-weight:400;">${formatFecha(r.fecha)} · ${r.hora}h</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:20px 24px;${ocasion || alergias || tronas ? 'border-bottom:1px solid #e8e0d0;' : ''}">
+                  <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#c9a24a;letter-spacing:0.12em;text-transform:uppercase;">Comensales</p>
+                  <p style="margin:6px 0 0;font-size:18px;color:#1a1208;">${r.comensales} ${r.comensales === 1 ? 'persona' : 'personas'}</p>
+                </td>
+              </tr>
+              ${ocasion || alergias || tronas ? `<tr><td style="padding:4px 24px;"><table width="100%" cellpadding="0" cellspacing="0">${ocasion}${alergias}${tronas}</table></td></tr>` : ''}
+            </table>
+
+            <!-- Contacto -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f4ef;border-radius:8px;margin-bottom:32px;">
+              <tr>
+                <td style="padding:20px 24px;">
+                  <p style="margin:0 0 4px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#a09070;">¿Necesita modificar o cancelar su reserva?</p>
+                  <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;color:#1a1208;">659 254 121</p>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0;font-size:15px;color:#5a4e3a;font-style:italic;">Hasta pronto. Será un placer recibirle.</p>
+
+          </td>
+        </tr>
+${EMAIL_FOOTER}`,
   };
 }
 
 // ─── Plantilla: Reserva Rechazada ─────────────────────────────────────────────
 function emailRechazada(r: ReservaRecord): { subject: string; html: string } {
   const motivo = r.motivo_rechazo
-    ? `<p style="margin:0 0 16px;font-size:14px;color:#64748b;">Motivo: <em>${escapeHtml(r.motivo_rechazo)}</em></p>`
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="border-left:3px solid #c9a24a;margin-bottom:28px;">
+         <tr><td style="padding:12px 20px;">
+           <p style="margin:0 0 4px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#a09070;text-transform:uppercase;letter-spacing:0.1em;">Motivo</p>
+           <p style="margin:0;font-size:14px;color:#5a4e3a;font-style:italic;">${escapeHtml(r.motivo_rechazo)}</p>
+         </td></tr>
+       </table>`
     : '';
 
   return {
-    subject: `❌ Solicitud de reserva — ${formatFecha(r.fecha)}`,
-    html: `
-<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f8f8f5;font-family:'Helvetica Neue',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px;">
-    <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
-
-        <!-- Header -->
+    subject: `Su solicitud de reserva · Rincón de Alfonso`,
+    html: `${EMAIL_BASE}${EMAIL_HEADER}
         <tr>
-          <td style="background:#f2cc0d;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
-            <p style="margin:0 0 8px;font-size:32px;">🍽️</p>
-            <h1 style="margin:0;font-size:22px;font-weight:700;color:#1a180d;">Rincón de Alfonso</h1>
-            <p style="margin:6px 0 0;font-size:14px;color:#4a4010;">Reservas y Eventos</p>
-          </td>
-        </tr>
+          <td style="background:#ffffff;padding:48px 48px 40px;">
 
-        <!-- Body -->
-        <tr>
-          <td style="background:#ffffff;padding:36px 40px;">
-            <h2 style="margin:0 0 8px;font-size:20px;color:#1a180d;">Lo sentimos, no podemos confirmarte</h2>
-            <p style="margin:0 0 24px;font-size:15px;color:#64748b;">Hola ${escapeHtml(r.nombre)}, lamentablemente no podemos confirmar tu solicitud para el <strong>${formatFecha(r.fecha)}</strong> a las <strong>${escapeHtml(r.hora)}</strong> para ${r.comensales} persona${r.comensales !== 1 ? 's' : ''}.</p>
+            <p style="margin:0 0 4px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#c9a24a;letter-spacing:0.12em;text-transform:uppercase;">Solicitud de reserva</p>
+            <h1 style="margin:0 0 24px;font-size:28px;font-weight:400;color:#1a1208;line-height:1.2;">Lo sentimos,<br><em>no podemos confirmarlo</em></h1>
+
+            <p style="margin:0 0 28px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;color:#5a4e3a;line-height:1.7;">Estimado/a <strong>${escapeHtml(r.nombre)}</strong>, lamentablemente no nos es posible confirmar su solicitud para el <strong>${formatFecha(r.fecha)}</strong> a las <strong>${escapeHtml(r.hora)}h</strong> para ${r.comensales} persona${r.comensales !== 1 ? 's' : ''}.</p>
 
             ${motivo}
 
-            <div style="background:#f8f8f5;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
-              <p style="margin:0 0 8px;font-size:14px;color:#64748b;">¿Quieres intentarlo con otra fecha? Contáctanos:</p>
-              <p style="margin:0;font-size:15px;font-weight:600;color:#1a180d;">📞 659 254 121</p>
-            </div>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f4ef;border-radius:8px;margin-bottom:32px;">
+              <tr>
+                <td style="padding:20px 24px;">
+                  <p style="margin:0 0 4px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#a09070;">¿Desea intentarlo con otra fecha? Llámenos:</p>
+                  <p style="margin:0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;color:#1a1208;">659 254 121</p>
+                </td>
+              </tr>
+            </table>
 
-            <p style="margin:0;font-size:14px;color:#94a3b8;">Esperamos poder recibirte pronto. ¡Disculpa las molestias!</p>
+            <p style="margin:0;font-size:15px;color:#5a4e3a;font-style:italic;">Esperamos tener el placer de recibirle en otra ocasión.</p>
+
           </td>
         </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="background:#f8f8f5;border-radius:0 0 16px 16px;padding:20px 40px;text-align:center;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">Rincón de Alfonso · Carril Torre Los Leales, 4 · Los Dolores, Murcia</p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
+${EMAIL_FOOTER}`,
+  };
+}
 </body>
 </html>`,
   };
