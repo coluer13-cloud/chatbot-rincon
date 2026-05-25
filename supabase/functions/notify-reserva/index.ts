@@ -27,6 +27,15 @@ interface WebhookPayload {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function formatFecha(iso: string): string {
   const [y, m, d] = iso.split('-');
   const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -36,10 +45,10 @@ function formatFecha(iso: string): string {
 // ─── Plantilla: Reserva Confirmada ────────────────────────────────────────────
 function emailConfirmada(r: ReservaRecord): { subject: string; html: string } {
   const ocasion = r.detalles?.ocasion
-    ? `<p style="margin:0 0 8px;">🎉 <strong>Ocasión especial:</strong> ${r.detalles.ocasion}</p>`
+    ? `<p style="margin:0 0 8px;">🎉 <strong>Ocasión especial:</strong> ${escapeHtml(r.detalles.ocasion)}</p>`
     : '';
   const alergias = r.detalles?.alergias
-    ? `<p style="margin:0 0 8px;">🌿 <strong>Alergias/dieta:</strong> ${r.detalles.alergias}</p>`
+    ? `<p style="margin:0 0 8px;">🌿 <strong>Alergias/dieta:</strong> ${escapeHtml(r.detalles.alergias)}</p>`
     : '';
   const tronas = r.detalles?.tronas
     ? `<p style="margin:0 0 8px;">🪑 <strong>Tronas:</strong> Sí, las prepararemos</p>`
@@ -69,7 +78,7 @@ function emailConfirmada(r: ReservaRecord): { subject: string; html: string } {
         <tr>
           <td style="background:#ffffff;padding:36px 40px;">
             <h2 style="margin:0 0 8px;font-size:20px;color:#1a180d;">¡Reserva confirmada! ✅</h2>
-            <p style="margin:0 0 24px;font-size:15px;color:#64748b;">Hola ${r.nombre}, tu reserva ha sido confirmada. Te esperamos con todo listo.</p>
+            <p style="margin:0 0 24px;font-size:15px;color:#64748b;">Hola ${escapeHtml(r.nombre)}, tu reserva ha sido confirmada. Te esperamos con todo listo.</p>
 
             <!-- Caja de detalles -->
             <div style="background:#f8f8f5;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
@@ -104,7 +113,7 @@ function emailConfirmada(r: ReservaRecord): { subject: string; html: string } {
 // ─── Plantilla: Reserva Rechazada ─────────────────────────────────────────────
 function emailRechazada(r: ReservaRecord): { subject: string; html: string } {
   const motivo = r.motivo_rechazo
-    ? `<p style="margin:0 0 16px;font-size:14px;color:#64748b;">Motivo: <em>${r.motivo_rechazo}</em></p>`
+    ? `<p style="margin:0 0 16px;font-size:14px;color:#64748b;">Motivo: <em>${escapeHtml(r.motivo_rechazo)}</em></p>`
     : '';
 
   return {
@@ -131,7 +140,7 @@ function emailRechazada(r: ReservaRecord): { subject: string; html: string } {
         <tr>
           <td style="background:#ffffff;padding:36px 40px;">
             <h2 style="margin:0 0 8px;font-size:20px;color:#1a180d;">Lo sentimos, no podemos confirmarte</h2>
-            <p style="margin:0 0 24px;font-size:15px;color:#64748b;">Hola ${r.nombre}, lamentablemente no podemos confirmar tu solicitud para el <strong>${formatFecha(r.fecha)}</strong> a las <strong>${r.hora}</strong> para ${r.comensales} persona${r.comensales !== 1 ? 's' : ''}.</p>
+            <p style="margin:0 0 24px;font-size:15px;color:#64748b;">Hola ${escapeHtml(r.nombre)}, lamentablemente no podemos confirmar tu solicitud para el <strong>${formatFecha(r.fecha)}</strong> a las <strong>${escapeHtml(r.hora)}</strong> para ${r.comensales} persona${r.comensales !== 1 ? 's' : ''}.</p>
 
             ${motivo}
 
@@ -162,9 +171,12 @@ function emailRechazada(r: ReservaRecord): { subject: string; html: string } {
 // ─── Handler principal ────────────────────────────────────────────────────────
 serve(async (req: Request) => {
   // Verificar secret para que solo Supabase pueda llamar a esta función
-  const authHeader = req.headers.get('Authorization');
   const expectedSecret = Deno.env.get('WEBHOOK_SECRET');
-  if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
+  if (!expectedSecret) {
+    console.error('WEBHOOK_SECRET not configured — rejecting request');
+    return new Response('Server misconfigured', { status: 500 });
+  }
+  if (req.headers.get('Authorization') !== `Bearer ${expectedSecret}`) {
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -202,7 +214,7 @@ serve(async (req: Request) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Rincón de Alfonso <onboarding@resend.dev>',
+      from: 'Rincón de Alfonso <reservas@rincondealfonso.com>',
       to: [record.email],
       subject,
       html,
@@ -215,6 +227,6 @@ serve(async (req: Request) => {
     return new Response('Email error', { status: 500 });
   }
 
-  console.log(`Email ${record.estado} enviado a ${record.email}`);
+  console.log(`Email ${record.estado} enviado para reserva ${record.id}`);
   return new Response('OK', { status: 200 });
 });
