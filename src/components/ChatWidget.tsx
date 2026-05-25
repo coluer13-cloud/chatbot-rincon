@@ -11,6 +11,7 @@ import { sendMessage, extractJson } from '@/src/lib/openai';
 import { insertReserva, insertLeadEvento } from '@/src/lib/supabase';
 
 const RESTAURANT_ID = import.meta.env.VITE_RESTAURANT_ID as string;
+const PRIVACY_URL = 'https://rincondealfonso.com/politica-de-privacidad/';
 
 const BUBBLES = [
   '¡Haz tu reserva! 🍽️',
@@ -311,6 +312,13 @@ export default function ChatWidget() {
                   ✅ Solicitud enviada — ¡hasta pronto!
                 </p>
               ) : (
+                <>
+                <p className="text-center text-[10px] text-slate-400 pb-1.5">
+                  Al enviar aceptas nuestra{' '}
+                  <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-600">
+                    Política de privacidad
+                  </a>
+                </p>
                 <div className="flex items-center gap-2 bg-slate-50 rounded-2xl px-4 py-2">
                   <input
                     ref={inputRef}
@@ -330,6 +338,7 @@ export default function ChatWidget() {
                     <Send size={14} className="text-slate-900" />
                   </button>
                 </div>
+                </>
               )}
             </div>
           </motion.div>
