@@ -204,10 +204,6 @@ function emailRechazada(r: ReservaRecord): { subject: string; html: string } {
 ${EMAIL_FOOTER}`,
   };
 }
-</body>
-</html>`,
-  };
-}
 
 // ─── Handler principal ────────────────────────────────────────────────────────
 serve(async (req: Request) => {
