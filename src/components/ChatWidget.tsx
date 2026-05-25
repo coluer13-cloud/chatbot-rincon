@@ -43,6 +43,7 @@ export default function ChatWidget() {
   const [bubbleIdx, setBubbleIdx]     = useState(0);
   const [bubbleVisible, setBubbleVisible] = useState(true);
   const [bubblesActive, setBubblesActive] = useState(true);
+  const isEmbedded = window.self !== window.top;
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
 
@@ -52,21 +53,33 @@ export default function ChatWidget() {
 
   // Ciclo de bocadillos: cada 5s cambia, para a los 30s
   useEffect(() => {
+    if (isEmbedded) {
+      window.parent.postMessage({ type: 'chatbot-bubble', active: true, text: BUBBLES[0] }, '*');
+    }
     const stop = setTimeout(() => {
       setBubblesActive(false);
-      if (window.self !== window.top)
-        window.parent.postMessage({ type: 'chatbot-bubble', active: false }, '*');
+      if (isEmbedded) window.parent.postMessage({ type: 'chatbot-bubble', active: false }, '*');
     }, 30000);
+    let idx = 0;
     const cycle = setInterval(() => {
       setBubbleVisible(false);
       setTimeout(() => {
-        setBubbleIdx(i => (i + 1) % BUBBLES.length);
+        idx = (idx + 1) % BUBBLES.length;
+        setBubbleIdx(idx);
         setBubbleVisible(true);
+        if (isEmbedded) window.parent.postMessage({ type: 'chatbot-bubble', active: true, text: BUBBLES[idx] }, '*');
       }, 400);
     }, 5000);
-    if (window.self !== window.top)
-      window.parent.postMessage({ type: 'chatbot-bubble', active: true }, '*');
     return () => { clearTimeout(stop); clearInterval(cycle); };
+  }, []);
+
+  // Escuchar orden de abrir desde el padre (cuando se clica el bocadillo externo)
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'chatbot-open') setOpen(true);
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
   }, []);
 
   useEffect(() => {
@@ -324,7 +337,7 @@ export default function ChatWidget() {
       {/* Botón flotante con bocadillos */}
       <div className="flex flex-col items-end gap-2">
         <AnimatePresence>
-          {!open && bubblesActive && (
+          {!open && bubblesActive && !isEmbedded && (
             <motion.div
               key={bubbleIdx}
               initial={{ opacity: 0, y: 8, scale: 0.9 }}
