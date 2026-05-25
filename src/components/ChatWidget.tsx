@@ -44,6 +44,7 @@ export default function ChatWidget() {
   const [bubbleVisible, setBubbleVisible] = useState(true);
   const [bubblesActive, setBubblesActive] = useState(true);
   const isEmbedded = window.self !== window.top;
+  const openRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
 
@@ -67,7 +68,7 @@ export default function ChatWidget() {
         idx = (idx + 1) % BUBBLES.length;
         setBubbleIdx(idx);
         setBubbleVisible(true);
-        if (isEmbedded) window.parent.postMessage({ type: 'chatbot-bubble', active: true, text: BUBBLES[idx] }, '*');
+        if (isEmbedded && !openRef.current) window.parent.postMessage({ type: 'chatbot-bubble', active: true, text: BUBBLES[idx] }, '*');
       }, 400);
     }, 5000);
     return () => { clearTimeout(stop); clearInterval(cycle); };
@@ -83,8 +84,9 @@ export default function ChatWidget() {
   }, []);
 
   useEffect(() => {
+    openRef.current = open;
     if (open) setTimeout(() => inputRef.current?.focus(), 300);
-    if (window.self !== window.top) {
+    if (isEmbedded) {
       window.parent.postMessage({ type: 'chatbot-resize', open }, '*');
     }
   }, [open]);
