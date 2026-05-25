@@ -12,7 +12,14 @@ import { insertReserva, insertLeadEvento } from '@/src/lib/supabase';
 
 const RESTAURANT_ID = import.meta.env.VITE_RESTAURANT_ID as string;
 
-const LOOP_TEXT = 'Haz tu reserva · Eventos especiales · Mesa para esta noche · Celebra con nosotros · ';
+const BUBBLES = [
+  '¡Haz tu reserva! 🍽️',
+  'Celebra con nosotros 🎉',
+  '¿Mesa para esta noche? 🌙',
+  '¿Evento especial? ✨',
+  'Reserva en segundos ⚡',
+  '¡Te esperamos! 👋',
+];
 
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
@@ -33,12 +40,28 @@ export default function ChatWidget() {
   const [loading, setLoading]   = useState(false);
   const [flow, setFlow]         = useState<ChatFlow>('idle');
   const [datos, setDatos]       = useState<DatosReservaParcial | DatosEventoParcial>({});
+  const [bubbleIdx, setBubbleIdx]     = useState(0);
+  const [bubbleVisible, setBubbleVisible] = useState(true);
+  const [bubblesActive, setBubblesActive] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Ciclo de bocadillos: cada 5s cambia, para a los 30s
+  useEffect(() => {
+    const stop = setTimeout(() => setBubblesActive(false), 30000);
+    const cycle = setInterval(() => {
+      setBubbleVisible(false);
+      setTimeout(() => {
+        setBubbleIdx(i => (i + 1) % BUBBLES.length);
+        setBubbleVisible(true);
+      }, 400);
+    }, 5000);
+    return () => { clearTimeout(stop); clearInterval(cycle); };
+  }, []);
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 300);
@@ -292,26 +315,22 @@ export default function ChatWidget() {
         )}
       </AnimatePresence>
 
-      {/* Botón flotante con loopit */}
+      {/* Botón flotante con bocadillos */}
       <div className="flex flex-col items-end gap-2">
         <AnimatePresence>
-          {!open && (
+          {!open && bubblesActive && (
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="flex items-center gap-2 bg-white rounded-full px-3 py-1.5 shadow-lg border border-slate-100 overflow-hidden max-w-[220px]"
+              key={bubbleIdx}
+              initial={{ opacity: 0, y: 8, scale: 0.9 }}
+              animate={{ opacity: bubbleVisible ? 1 : 0, y: bubbleVisible ? 0 : 8, scale: bubbleVisible ? 1 : 0.9 }}
+              exit={{ opacity: 0, y: 8, scale: 0.9 }}
+              transition={{ duration: 0.3 }}
+              className="relative bg-white rounded-2xl rounded-br-sm px-4 py-2.5 shadow-lg border border-slate-100 max-w-[200px] cursor-pointer"
+              onClick={() => setOpen(true)}
             >
-              <div className="overflow-hidden w-full">
-                <motion.p
-                  animate={{ x: ['0%', '-50%'] }}
-                  transition={{ repeat: Infinity, duration: 8, ease: 'linear' }}
-                  className="text-xs font-semibold text-slate-700 whitespace-nowrap"
-                  style={{ width: 'max-content' }}
-                >
-                  {LOOP_TEXT}{LOOP_TEXT}
-                </motion.p>
-              </div>
+              <p className="text-sm font-semibold text-slate-700 whitespace-nowrap">{BUBBLES[bubbleIdx]}</p>
+              {/* Cola del bocadillo */}
+              <div className="absolute -bottom-2 right-4 w-3 h-3 bg-white border-r border-b border-slate-100 rotate-45" />
             </motion.div>
           )}
         </AnimatePresence>
