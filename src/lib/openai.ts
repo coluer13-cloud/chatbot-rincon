@@ -3,6 +3,10 @@ import type { ChatMessage, DatosReservaParcial, DatosEventoParcial } from '@/src
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('[chat] Faltan variables de entorno VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY');
+}
+
 // ─── Detectar si la respuesta es el JSON final ────────────────────────────────
 export function extractJson(text: string): Record<string, unknown> | null {
   const match = text.match(/\{[\s\S]+\}/);
@@ -21,17 +25,23 @@ export async function sendMessage(
     { role: 'user' as const, content: userMessage },
   ];
 
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/chat-proxy`, {
+  const url = `${SUPABASE_URL}/functions/v1/chat-proxy`;
+
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
     },
     body: JSON.stringify({ messages, datosActuales }),
   });
 
-  if (!res.ok) throw new Error(`chat-proxy error: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    console.error(`[chat-proxy] Error ${res.status}:`, body);
+    throw new Error(`chat-proxy error: ${res.status}`);
+  }
+
   const data = await res.json();
   return data.content ?? '';
 }
