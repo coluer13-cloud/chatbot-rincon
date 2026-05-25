@@ -145,6 +145,9 @@ export default function ChatWidget() {
   async function handleSubmit(parsed: Record<string, unknown>) {
     try {
       if (parsed.tipo === 'reserva') {
+        const conversacion = messages
+          .filter(m => m.id !== 'welcome')
+          .map(m => ({ role: m.role, content: m.content }));
         const reserva: ReservaInsert = {
           nombre:      parsed.nombre as string,
           telefono:    parsed.telefono as string,
@@ -158,6 +161,7 @@ export default function ChatWidget() {
             ocasion:  parsed.ocasion as string | undefined,
             notas:    parsed.notas as string | undefined,
           },
+          conversacion,
           restaurant_id: RESTAURANT_ID,
         };
         await insertReserva(reserva);

@@ -16,6 +16,7 @@ export interface ReservaInsert {
     ocasion?: string;
     notas?: string;
   };
+  conversacion?: { role: 'user' | 'assistant'; content: string }[];
   restaurant_id: string;
 }
 
