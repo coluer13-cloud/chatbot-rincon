@@ -54,16 +54,9 @@ const SYSTEM_PROMPT = buildSystemPrompt;
 
 // ─── Detectar si la respuesta es el JSON final ────────────────────────────────
 export function extractJson(text: string): Record<string, unknown> | null {
-  const trimmed = text.trim();
-  if (!trimmed.startsWith('{')) return null;
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    // Intento con regex por si hay texto residual
-    const match = trimmed.match(/\{[\s\S]+\}/);
-    if (!match) return null;
-    try { return JSON.parse(match[0]); } catch { return null; }
-  }
+  const match = text.match(/\{[\s\S]+\}/);
+  if (!match) return null;
+  try { return JSON.parse(match[0]); } catch { return null; }
 }
 
 // ─── Llamada al modelo ────────────────────────────────────────────────────────
