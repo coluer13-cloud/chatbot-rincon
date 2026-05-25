@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import { X, Send, Loader2, CalendarCheck, PartyPopper, ChevronDown } from 'lucide-react';
 import type {
   ChatMessage, ChatFlow,
   DatosReservaParcial, DatosEventoParcial,
@@ -12,20 +12,27 @@ import { insertReserva, insertLeadEvento } from '@/src/lib/supabase';
 
 const RESTAURANT_ID = import.meta.env.VITE_RESTAURANT_ID as string;
 
+const LOOP_TEXT = 'Haz tu reserva · Eventos especiales · Mesa para esta noche · Celebra con nosotros · ';
+
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  content: '¡Hola! Soy Rincón, el asistente de Rincón de Alfonso 👋 ¿En qué puedo ayudarte hoy? Puedo gestionar tu reserva de mesa o ayudarte a organizar un evento especial.',
+  content: '¡Hola! Soy Cona, tu asistente en Rincón de Alfonso 👋 ¿En qué puedo ayudarte?',
   timestamp: new Date(),
 };
 
+const QUICK_REPLIES = [
+  { label: 'Reservar una mesa', icon: CalendarCheck, flow: 'reserva' as ChatFlow, text: 'Quiero reservar una mesa' },
+  { label: 'Celebrar un evento', icon: PartyPopper, flow: 'evento' as ChatFlow, text: 'Quiero organizar un evento especial' },
+];
+
 export default function ChatWidget() {
-  const [open, setOpen]       = useState(false);
+  const [open, setOpen]         = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
-  const [input, setInput]     = useState('');
-  const [loading, setLoading] = useState(false);
-  const [flow, setFlow]       = useState<ChatFlow>('idle');
-  const [datos, setDatos]     = useState<DatosReservaParcial | DatosEventoParcial>({});
+  const [input, setInput]       = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [flow, setFlow]         = useState<ChatFlow>('idle');
+  const [datos, setDatos]       = useState<DatosReservaParcial | DatosEventoParcial>({});
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
 
@@ -40,8 +47,8 @@ export default function ChatWidget() {
     }
   }, [open]);
 
-  async function handleSend() {
-    const text = input.trim();
+  async function handleSend(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || loading) return;
 
     const userMsg: ChatMessage = {
@@ -63,13 +70,8 @@ export default function ChatWidget() {
       );
 
       const parsed = extractJson(reply);
+      if (parsed) { await handleSubmit(parsed); return; }
 
-      if (parsed) {
-        await handleSubmit(parsed);
-        return;
-      }
-
-      // Actualizar flujo según respuesta
       if (flow === 'idle') {
         const lower = reply.toLowerCase() + text.toLowerCase();
         if (/reserva|mesa|cenar|comer/.test(lower)) setFlow('reserva');
@@ -118,7 +120,7 @@ export default function ChatWidget() {
         setMessages(prev => [...prev, {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: `¡Perfecto, ${reserva.nombre}! Tu solicitud de reserva para el ${formatFecha(reserva.fecha)} a las ${reserva.hora} para ${reserva.comensales} personas ha sido registrada. Recibirás la confirmación por email en breve. ¡Nos vemos pronto! 🍽️`,
+          content: `¡Perfecto, ${reserva.nombre}! Tu solicitud para el ${formatFecha(reserva.fecha)} a las ${reserva.hora} para ${reserva.comensales} personas ha sido registrada. Te confirmaremos por email en breve. ¡Hasta pronto! 🍽️`,
           timestamp: new Date(),
         }]);
       } else if (parsed.tipo === 'evento') {
@@ -136,15 +138,11 @@ export default function ChatWidget() {
         };
         await insertLeadEvento(lead);
         setFlow('completado');
-        const contacto = lead.contacto_pref === 'llamada'
-          ? 'llamarte'
-          : lead.contacto_pref === 'visita'
-          ? 'agendar una visita contigo'
-          : 'enviarte un presupuesto por email';
+        const contacto = lead.contacto_pref === 'llamada' ? 'llamarte' : lead.contacto_pref === 'visita' ? 'agendar una visita' : 'enviarte un presupuesto por email';
         setMessages(prev => [...prev, {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: `¡Genial, ${lead.nombre}! Hemos registrado tu interés para organizar tu ${lead.tipo_evento}. Nuestro equipo se pondrá en contacto contigo pronto para ${contacto}. ¡Va a ser una celebración increíble! 🎉`,
+          content: `¡Genial, ${lead.nombre}! Hemos registrado tu interés para tu ${lead.tipo_evento}. Nos pondremos en contacto pronto para ${contacto}. ¡Va a ser una celebración increíble! 🎉`,
           timestamp: new Date(),
         }]);
       }
@@ -173,8 +171,11 @@ export default function ChatWidget() {
     }
   }
 
+  const showQuickReplies = flow === 'idle' && messages.length === 1 && !loading;
+
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end gap-3">
+
       {/* Panel de chat */}
       <AnimatePresence>
         {open && (
@@ -183,29 +184,30 @@ export default function ChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="w-[360px] max-h-[560px] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
+            className="w-[calc(100vw-32px)] max-w-[370px] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
+            style={{ maxHeight: 'calc(100dvh - 100px)' }}
           >
             {/* Header */}
-            <div className="bg-primary px-5 py-4 flex items-center justify-between">
+            <div className="bg-primary px-4 py-3 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">
-                  🍽️
+                <div className="w-9 h-9 rounded-full bg-black/15 flex items-center justify-center font-black text-slate-900 text-sm">
+                  C
                 </div>
                 <div>
-                  <p className="font-semibold text-slate-900 text-sm">Rincón de Alfonso</p>
-                  <p className="text-xs text-slate-700">Reservas y Eventos</p>
+                  <p className="font-bold text-slate-900 text-sm leading-tight">Cona</p>
+                  <p className="text-[11px] text-slate-700 leading-tight">Rincón de Alfonso</p>
                 </div>
               </div>
               <button
                 onClick={() => setOpen(false)}
                 className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center hover:bg-black/20 transition-colors"
               >
-                <X size={16} className="text-slate-900" />
+                <ChevronDown size={18} className="text-slate-900" />
               </button>
             </div>
 
             {/* Mensajes */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar bg-slate-50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar bg-slate-50 min-h-0">
               {messages.map(msg => (
                 <motion.div
                   key={msg.id}
@@ -214,7 +216,7 @@ export default function ChatWidget() {
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                    className={`max-w-[82%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                       msg.role === 'user'
                         ? 'bg-primary text-slate-900 rounded-br-sm'
                         : 'bg-white text-slate-800 shadow-sm rounded-bl-sm'
@@ -225,6 +227,29 @@ export default function ChatWidget() {
                 </motion.div>
               ))}
 
+              {/* Botones rápidos */}
+              <AnimatePresence>
+                {showQuickReplies && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="flex flex-col gap-2 pt-1"
+                  >
+                    {QUICK_REPLIES.map(qr => (
+                      <button
+                        key={qr.flow}
+                        onClick={() => { setFlow(qr.flow); handleSend(qr.text); }}
+                        className="flex items-center gap-3 px-4 py-3 bg-white border-2 border-primary/30 hover:border-primary hover:bg-primary/5 rounded-2xl text-sm font-semibold text-slate-700 transition-all text-left"
+                      >
+                        <qr.icon size={18} className="text-primary shrink-0" />
+                        {qr.label}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {loading && (
                 <div className="flex justify-start">
                   <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm">
@@ -232,12 +257,11 @@ export default function ChatWidget() {
                   </div>
                 </div>
               )}
-
               <div ref={bottomRef} />
             </div>
 
             {/* Input */}
-            <div className="p-3 bg-white border-t border-slate-100">
+            <div className="p-3 bg-white border-t border-slate-100 shrink-0">
               {flow === 'completado' ? (
                 <p className="text-center text-xs text-slate-500 py-2">
                   ✅ Solicitud enviada — ¡hasta pronto!
@@ -252,12 +276,12 @@ export default function ChatWidget() {
                     onKeyDown={handleKeyDown}
                     placeholder="Escribe aquí..."
                     disabled={loading}
-                    className="flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 outline-none"
+                    className="flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 outline-none min-w-0"
                   />
                   <button
-                    onClick={handleSend}
+                    onClick={() => handleSend()}
                     disabled={!input.trim() || loading}
-                    className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center disabled:opacity-40 hover:bg-primary-dark transition-colors"
+                    className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center disabled:opacity-40 hover:bg-primary-dark transition-colors shrink-0"
                   >
                     <Send size={14} className="text-slate-900" />
                   </button>
@@ -268,24 +292,48 @@ export default function ChatWidget() {
         )}
       </AnimatePresence>
 
-      {/* Botón flotante */}
-      <motion.button
-        onClick={() => setOpen(o => !o)}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="w-14 h-14 rounded-full bg-primary shadow-lg flex items-center justify-center hover:bg-primary-dark transition-colors"
-      >
-        <AnimatePresence mode="wait">
-          {open
-            ? <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                <X size={22} className="text-slate-900" />
-              </motion.div>
-            : <motion.div key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                <MessageCircle size={22} className="text-slate-900" />
-              </motion.div>
-          }
+      {/* Botón flotante con loopit */}
+      <div className="flex flex-col items-end gap-2">
+        <AnimatePresence>
+          {!open && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="flex items-center gap-2 bg-white rounded-full px-3 py-1.5 shadow-lg border border-slate-100 overflow-hidden max-w-[220px]"
+            >
+              <div className="overflow-hidden w-full">
+                <motion.p
+                  animate={{ x: ['0%', '-50%'] }}
+                  transition={{ repeat: Infinity, duration: 8, ease: 'linear' }}
+                  className="text-xs font-semibold text-slate-700 whitespace-nowrap"
+                  style={{ width: 'max-content' }}
+                >
+                  {LOOP_TEXT}{LOOP_TEXT}
+                </motion.p>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
-      </motion.button>
+
+        <motion.button
+          onClick={() => setOpen(o => !o)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="w-14 h-14 rounded-full bg-primary shadow-lg flex items-center justify-center hover:bg-primary-dark transition-colors font-black text-slate-900 text-xl"
+        >
+          <AnimatePresence mode="wait">
+            {open
+              ? <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                  <X size={22} className="text-slate-900" />
+                </motion.div>
+              : <motion.div key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                  <span className="text-lg">C</span>
+                </motion.div>
+            }
+          </AnimatePresence>
+        </motion.button>
+      </div>
     </div>
   );
 }
