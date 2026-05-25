@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Send, Loader2, CalendarCheck, PartyPopper, ChevronDown } from 'lucide-react';
+import { X, Send, Loader2, CalendarCheck, PartyPopper, ChevronDown, MessageCircle } from 'lucide-react';
 import type {
   ChatMessage, ChatFlow,
   DatosReservaParcial, DatosEventoParcial,
@@ -190,8 +190,8 @@ export default function ChatWidget() {
             {/* Header */}
             <div className="bg-primary px-4 py-3 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-black/15 flex items-center justify-center font-black text-slate-900 text-sm">
-                  C
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center shadow-inner text-xl">
+                  🤖
                 </div>
                 <div>
                   <p className="font-bold text-slate-900 text-sm leading-tight">Cona</p>
@@ -328,7 +328,7 @@ export default function ChatWidget() {
                   <X size={22} className="text-slate-900" />
                 </motion.div>
               : <motion.div key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                  <span className="text-lg">C</span>
+                  <MessageCircle size={22} className="text-slate-900" />
                 </motion.div>
             }
           </AnimatePresence>
