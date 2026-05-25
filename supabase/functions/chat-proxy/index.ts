@@ -4,7 +4,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 // Actual data security comes from input validation + server-side API key.
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'content-type',
+  'Access-Control-Allow-Headers': 'content-type, authorization, apikey',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
